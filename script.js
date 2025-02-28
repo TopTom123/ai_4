@@ -88,82 +88,51 @@ function sendMessage() {
     const loadingElement = document.getElementById('loading');
     loadingElement.style.display = 'block';
 
-    const apiKey = 'sk-e77cb00917ec4e8190a8166f95a33d4c';
+    // 使用正确的API密钥
+    const apiKey = 'sk-cizefoakcoqnomaxahnuzxowieqellwsdaicvbxsxzndlili';
     const endpoint = 'https://api.deepseek.com/v1/chat/completions';
-
-    const payload = {
-        model: "deepseek-chat",
-        messages: [
-            { role: "system", content: "You are a helpful assistant" },
-            { role: "user", content: message }
-        ],
-        temperature: 0.7,
-        stream: false
-    };
-
-    console.log('发送请求:', payload); // 调试日志
 
     fetch(endpoint, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
+            'Authorization': `Bearer ${apiKey}`,
+            'Accept': 'application/json'
         },
         body: JSON.stringify({
             model: "deepseek-chat",
             messages: [
                 { role: "system", content: "You are a helpful assistant" },
-                { role: "user", content: message } // 使用真实输入
+                { role: "user", content: message }
             ],
-            stream: true // 保持流式传输
+            temperature: 0.7,
+            stream: false // 禁用流式传输简化处理
         })
     })
     .then(async response => {
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let fullResponse = '';
-    
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-    
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n');
-    
-            lines.forEach(line => {
-                if (line.startsWith('data: ')) {
-                    try {
-                        const data = JSON.parse(line.replace('data: ', ''));
-                        if (data.choices[0].delta.content) {
-                            fullResponse += data.choices[0].delta.content;
-                            // 实时更新显示
-                            updateBotMessage(fullResponse); 
-                        }
-                    } catch (e) {
-                        console.warn('解析块失败:', e);
-                    }
-                }
-            });
+        // 优先处理HTTP错误
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`[${response.status}] ${errorData.error?.message}`);
         }
+        return response.json();
     })
-    
     .then(data => {
-        console.log('完整响应:', data); // 调试日志
-        if (data.error) {
-            throw new Error(data.error.message);
+        if (data.choices?.[0]?.message?.content) {
+            displayMessage('bot', data.choices[0].message.content);
+        } else {
+            throw new Error('Invalid response format');
         }
-        const reply = data.choices?.[0]?.message?.content || '无响应内容';
-        displayMessage('bot', reply);
     })
     .catch(error => {
-        console.error('完整错误:', error);
-        const errorMsg = error.message || '未知错误';
-        displayMessage('bot', `请求失败: ${errorMsg}`);
+        console.error('Error:', error);
+        displayMessage('bot', `请求失败：${error.message}`);
     })
     .finally(() => {
         loadingElement.style.display = 'none';
     });
 }
+
 
 let currentBotMessage = null;
 
