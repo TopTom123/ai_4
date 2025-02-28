@@ -79,61 +79,63 @@ function displayMessage(role, message) {
 
 function sendMessage() {
     const inputElement = document.getElementById('chat-input');
-    const message = inputElement.value;
-    if (!message.trim()) return;
+    const message = inputElement.value.trim();
+    if (!message) return;
 
     displayMessage('user', message);
     inputElement.value = '';
 
-    // 显示加载动画
     const loadingElement = document.getElementById('loading');
-    if (loadingElement) {
-        loadingElement.style.display = 'block';
-    }
+    loadingElement.style.display = 'block';
 
     const apiKey = 'sk-e77cb00917ec4e8190a8166f95a33d4c';
-    const endpoint = 'https://api.deepseek.com/chat/completions';
+    const endpoint = 'https://api.deepseek.com/v1/chat/completions';
 
     const payload = {
         model: "deepseek-chat",
         messages: [
             { role: "system", content: "You are a helpful assistant" },
-            { role: "user", content:"Hello!" }
+            { role: "user", content: message }
         ],
-        stream: true
+        temperature: 0.7,
+        stream: false
     };
+
+    console.log('发送请求:', payload); // 调试日志
 
     fetch(endpoint, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
+            'Authorization': `Bearer ${apiKey}`,
+            'Accept': 'application/json'
         },
         body: JSON.stringify(payload)
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => Promise.reject(err));
+        }
+        return response.json();
+    })
     .then(data => {
-        // 隐藏加载动画
-        if (loadingElement) {
-            loadingElement.style.display = 'none';
+        console.log('完整响应:', data); // 调试日志
+        if (data.error) {
+            throw new Error(data.error.message);
         }
-
-        if (data.choices && data.choices.length > 0) {
-            displayMessage('bot', data.choices[0].message.content);
-        } else {
-            displayMessage('bot', '出错了，请稍后再试。');
-        }
+        const reply = data.choices?.[0]?.message?.content || '无响应内容';
+        displayMessage('bot', reply);
     })
     .catch(error => {
-        // 隐藏加载动画
-        if (loadingElement) {
-            loadingElement.style.display = 'none';
-        }
-
-        displayMessage('bot', '出错了，请稍后再试。');
-        console.error('Error:', error);
+        console.error('完整错误:', error);
+        const errorMsg = error.message || '未知错误';
+        displayMessage('bot', `请求失败: ${errorMsg}`);
+    })
+    .finally(() => {
+        loadingElement.style.display = 'none';
     });
 }
+
 
 // 添加主题切换功能
 function toggleTheme() {
