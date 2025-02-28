@@ -88,9 +88,20 @@ function sendMessage() {
     const loadingElement = document.getElementById('loading');
     loadingElement.style.display = 'block';
 
-    // 使用正确的API密钥
-    const apiKey = 'sk-cizefoakcoqnomaxahnuzxowieqellwsdaicvbxsxzndlili';
+    const apiKey = 'sk-e77cb00917ec4e8190a8166f95a33d4c';
     const endpoint = 'https://api.deepseek.com/v1/chat/completions';
+
+    const payload = {
+        model: "deepseek-chat",
+        messages: [
+            { role: "system", content: "You are a helpful assistant" },
+            { role: "user", content: message }
+        ],
+        temperature: 0.7,
+        stream: false
+    };
+
+    console.log('发送请求:', payload); // 调试日志
 
     fetch(endpoint, {
         method: 'POST',
@@ -99,64 +110,32 @@ function sendMessage() {
             'Authorization': `Bearer ${apiKey}`,
             'Accept': 'application/json'
         },
-        body: JSON.stringify({
-            model: "deepseek-chat",
-            messages: [
-                { role: "system", content: "You are a helpful assistant" },
-                { role: "user", content: message }
-            ],
-            temperature: 0.7,
-            stream: false // 禁用流式传输简化处理
-        })
+        body: JSON.stringify(payload)
     })
-    .then(async response => {
-        // 优先处理HTTP错误
+    .then(response => {
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`[${response.status}] ${errorData.error?.message}`);
+            return response.json().then(err => Promise.reject(err));
         }
         return response.json();
     })
     .then(data => {
-        if (data.choices?.[0]?.message?.content) {
-            displayMessage('bot', data.choices[0].message.content);
-        } else {
-            throw new Error('Invalid response format');
+        console.log('完整响应:', data); // 调试日志
+        if (data.error) {
+            throw new Error(data.error.message);
         }
+        const reply = data.choices?.[0]?.message?.content || '无响应内容';
+        displayMessage('bot', reply);
     })
     .catch(error => {
-        console.error('Error:', error);
-        displayMessage('bot', `请求失败：${error.message}`);
+        console.error('完整错误:', error);
+        const errorMsg = error.message || '未知错误';
+        displayMessage('bot', `请求失败: ${errorMsg}`);
     })
     .finally(() => {
         loadingElement.style.display = 'none';
     });
 }
 
-
-let currentBotMessage = null;
-
-function updateBotMessage(content) {
-    const messagesContainer = document.getElementById('messages');
-    
-    if (!currentBotMessage) {
-        currentBotMessage = document.createElement('div');
-        currentBotMessage.className = 'message bot';
-        messagesContainer.appendChild(currentBotMessage);
-        
-        const avatar = document.createElement('img');
-        avatar.src = 'bot-avatar.png';
-        currentBotMessage.appendChild(avatar);
-        
-        const messageContent = document.createElement('div');
-        messageContent.className = 'message-content';
-        currentBotMessage.appendChild(messageContent);
-    }
-
-    const contentElement = currentBotMessage.querySelector('.message-content');
-    contentElement.innerHTML = formatMessage(content);
-    contentElement.scrollIntoView({ behavior: 'smooth' });
-}
 
 // 添加主题切换功能
 function toggleTheme() {
@@ -208,4 +187,3 @@ document.getElementById('chat-input').addEventListener('keypress', function(even
         sendMessage();
     }
 });
-console.log('Received chunk:', chunk); // 在解析chunk前打印
