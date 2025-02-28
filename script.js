@@ -88,7 +88,7 @@ function sendMessage() {
     const loadingElement = document.getElementById('loading');
     loadingElement.style.display = 'block';
 
-    const apiKey = 'sk-cizefoakcoqnomaxahnuzxowieqellwsdaicvbxsxzndlili';
+    const apiKey = 'sk-e77cb00917ec4e8190a8166f95a33d4c';
     const endpoint = 'https://api.deepseek.com/v1/chat/completions';
 
     const payload = {
@@ -107,17 +107,46 @@ function sendMessage() {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
-            'Accept': 'application/json'
+            'Authorization': `Bearer ${apiKey}`
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+            model: "deepseek-chat",
+            messages: [
+                { role: "system", content: "You are a helpful assistant" },
+                { role: "user", content: message } // 使用真实输入
+            ],
+            stream: true // 保持流式传输
+        })
     })
-    .then(response => {
-        if (!response.ok) {
-            return response.json().then(err => Promise.reject(err));
+    .then(async response => {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let fullResponse = '';
+    
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+    
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+    
+            lines.forEach(line => {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const data = JSON.parse(line.replace('data: ', ''));
+                        if (data.choices[0].delta.content) {
+                            fullResponse += data.choices[0].delta.content;
+                            // 实时更新显示
+                            updateBotMessage(fullResponse); 
+                        }
+                    } catch (e) {
+                        console.warn('解析块失败:', e);
+                    }
+                }
+            });
         }
-        return response.json();
     })
+    
     .then(data => {
         console.log('完整响应:', data); // 调试日志
         if (data.error) {
@@ -136,6 +165,29 @@ function sendMessage() {
     });
 }
 
+let currentBotMessage = null;
+
+function updateBotMessage(content) {
+    const messagesContainer = document.getElementById('messages');
+    
+    if (!currentBotMessage) {
+        currentBotMessage = document.createElement('div');
+        currentBotMessage.className = 'message bot';
+        messagesContainer.appendChild(currentBotMessage);
+        
+        const avatar = document.createElement('img');
+        avatar.src = 'bot-avatar.png';
+        currentBotMessage.appendChild(avatar);
+        
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        currentBotMessage.appendChild(messageContent);
+    }
+
+    const contentElement = currentBotMessage.querySelector('.message-content');
+    contentElement.innerHTML = formatMessage(content);
+    contentElement.scrollIntoView({ behavior: 'smooth' });
+}
 
 // 添加主题切换功能
 function toggleTheme() {
@@ -187,3 +239,4 @@ document.getElementById('chat-input').addEventListener('keypress', function(even
         sendMessage();
     }
 });
+console.log('Received chunk:', chunk); // 在解析chunk前打印
