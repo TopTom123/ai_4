@@ -100,7 +100,7 @@ function sendMessage() {
             { role: "system", content: "You are a helpful assistant" },
             { role: "user", content:"Hello!" }
         ],
-        stream: false
+        stream: true
     };
 
     fetch(endpoint, {
