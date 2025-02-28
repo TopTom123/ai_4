@@ -91,14 +91,14 @@ function sendMessage() {
         loadingElement.style.display = 'block';
     }
 
-    const apiKey = 'sk-cizefoakcoqnomaxahnuzxowieqellwsdaicvbxsxzndlili';
+    const apiKey = 'sk-e77cb00917ec4e8190a8166f95a33d4c';
     const endpoint = 'https://api.deepseek.com/chat/completions';
 
     const payload = {
         model: "deepseek-chat",
         messages: [
             { role: "system", content: "You are a helpful assistant" },
-            { role: "user", content: message }
+            { role: "user", content:"Hello!" }
         ],
         stream: false
     };
